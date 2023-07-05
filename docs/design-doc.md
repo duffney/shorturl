@@ -59,10 +59,11 @@ Hash function requirements:
 
 ## Data model
 
+```bash
 Table: URL
 +----+-------------+--------------------+
 | id | short_url   | long_url           |
 +----+-------------+--------------------+
 | 1  | abc123      | https://example.com |
 +----+-------------+--------------------+
-
+```
