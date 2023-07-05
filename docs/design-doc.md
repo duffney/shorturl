@@ -12,7 +12,7 @@ Deployment: Docker, Kubernetes
 
 ## High-level system flow
 
-![url shortening diagram](./imgs/url-shortening-diagram.drawio.png)
+![url shortening diagram](./imgs/url-shortening-diagram.png)
 
 1. longURL is the input.
 2. The system checks if the longURL is in the database.
