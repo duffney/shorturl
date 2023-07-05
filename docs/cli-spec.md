@@ -1,0 +1,1 @@
+# Shorturl CLI spec
