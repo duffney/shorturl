@@ -10,6 +10,8 @@ import (
 	"time"
 )
 
+const version = "1.0.0"
+
 type config struct {
 	port int
 }
@@ -34,13 +36,13 @@ func main() {
 	}
 
 	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", strconv.Itoa(cfg.port)),
+		Addr:         fmt.Sprintf(":%s", strconv.Itoa(cfg.port)),
 		Handler:      app.routes(),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 
-	log.Printf("Starting server on port %s", &cfg.port)
+	log.Printf("Starting server on port %d", cfg.port)
 	err := srv.ListenAndServe()
 	log.Fatal(err)
 }
