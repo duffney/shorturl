@@ -19,7 +19,7 @@ The URL shortener service is web-based appliaction that allows users to shorten 
 - request parameter: {longUrl: longURLString}
 - return shortURL
 
-2. URL redirecting. Toe short URL to the corresponding long URL, a client sends a GET request. The API looks like this:
+2. URL redirecting. To short URL to the corresponding long URL, a client sends a GET request. The API looks like this:
 
 **GET** _api/v1/shortUrl_
 
