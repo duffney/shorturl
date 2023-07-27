@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 )
 
 func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
@@ -66,17 +67,30 @@ func (app *application) shortenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	generator, err := NewIDGenerator(1)
+	_, err = url.ParseRequestURI(input.Url) // TODO Convert isUrlValid func in helpers.go
+	if err != nil {
+		http.Error(w, "Invalid URL", http.StatusBadRequest)
+		return
+	}
+
+	// check if url is already in the database
+	for _, v := range app.db { // improve with go routines
+		if v.Long_url == input.Url {
+			fmt.Fprintf(w, "%+v\n", v.Short_url)
+			return
+		}
+	}
+
+	generator, err := NewIDGenerator(1) // TODO: add env var for workerID
 	if err != nil {
 		http.Error(w, "Failed to generate ID", http.StatusInternalServerError)
 		return
 	}
 
 	id := generator.GenerateID()
-	// change print to include ID:
-	fmt.Println("Generated ID:", id)
+	app.logger.Println("Generated ID:", id)
 	hash := DecimalToBase62(id)
-	fmt.Println("Hashed ID:", hash)
+	app.logger.Println("Hashed ID:", hash)
 
 	// save the url and the id in a map
 	s := Shorten{
@@ -88,15 +102,7 @@ func (app *application) shortenHandler(w http.ResponseWriter, r *http.Request) {
 	// store Shorten in a map
 	app.db[id] = s
 
-	// marshal the database to JSON
-	js, err := json.MarshalIndent(app.db, "", "\t")
-	if err != nil {
-		http.Error(w, "Failed to generate JSON response", http.StatusInternalServerError)
-		return
-	}
-	// print the js to standard out
-	fmt.Println("Database:", string(js))
-
+	// Return the shortened url as a string
 	fmt.Fprintf(w, "%+v\n", app.db[id].Short_url)
 }
 
@@ -114,4 +120,22 @@ func (app *application) redirectHandler(w http.ResponseWriter, r *http.Request) 
 	url := app.db[id].Long_url
 	// 301 redirect to the url
 	http.Redirect(w, r, url, http.StatusMovedPermanently)
+}
+
+func (app *application) listHandler(w http.ResponseWriter, r *http.Request) {
+	// TODO: add an envelope to the response
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	js, err := json.MarshalIndent(app.db, "", "\t")
+	if err != nil {
+		http.Error(w, "Failed to generate JSON response", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusFound)
+	w.Write(js)
 }
