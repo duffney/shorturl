@@ -19,6 +19,7 @@ type config struct {
 type application struct {
 	config config
 	logger *log.Logger
+	db     map[int64]Shorten
 }
 
 func main() {
@@ -33,6 +34,7 @@ func main() {
 	app := &application{
 		config: cfg,
 		logger: logger,
+		db:     make(map[int64]Shorten),
 	}
 
 	srv := &http.Server{
