@@ -13,7 +13,8 @@ import (
 const version = "1.0.0"
 
 type config struct {
-	port int
+	port     int
+	workerID int64
 }
 
 type application struct {
@@ -27,6 +28,7 @@ func main() {
 	var cfg config
 
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
+	flag.Int64Var(&cfg.workerID, "workerID", 1, "Worker ID") //Change to env var later os.Getenv("WORKER_ID")
 	flag.Parse()
 
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)

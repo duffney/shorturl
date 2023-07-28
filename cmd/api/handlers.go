@@ -2,9 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"net/url"
 )
 
 func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
@@ -67,8 +65,8 @@ func (app *application) shortenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = url.ParseRequestURI(input.Url) // TODO Convert isUrlValid func in helpers.go
-	if err != nil {
+	// validate the url
+	if !app.isURLValid(input.Url) {
 		http.Error(w, "Invalid URL", http.StatusBadRequest)
 		return
 	}
@@ -76,12 +74,17 @@ func (app *application) shortenHandler(w http.ResponseWriter, r *http.Request) {
 	// check if url is already in the database
 	for _, v := range app.db { // improve with go routines
 		if v.Long_url == input.Url {
-			fmt.Fprintf(w, "%+v\n", v.Short_url)
+			// fmt.Fprintf(w, "%+v\n", v.Short_url)
+			err := app.writeJSON(w, http.StatusOK, envelope{"shortlinks": v}, nil)
+			if err != nil {
+				app.logger.Print(err)
+				http.Error(w, "The server encountered a problem and could not process your request.", http.StatusInternalServerError)
+			}
 			return
 		}
 	}
 
-	generator, err := NewIDGenerator(1) // TODO: add env var for workerID
+	generator, err := NewIDGenerator(app.config.workerID) // DONE: add env var for workerID
 	if err != nil {
 		http.Error(w, "Failed to generate ID", http.StatusInternalServerError)
 		return
@@ -94,16 +97,21 @@ func (app *application) shortenHandler(w http.ResponseWriter, r *http.Request) {
 
 	// save the url and the id in a map
 	s := Shorten{
-		// Id:        id,
 		Long_url:  input.Url,
 		Short_url: shortenerAddress + hash, // combine hash with shorturl address
 	}
 
 	// store Shorten in a map
+	app.logger.Printf("Add shorturl [%s] to database.", s.Short_url)
 	app.db[id] = s
 
 	// Return the shortened url as a string
-	fmt.Fprintf(w, "%+v\n", app.db[id].Short_url)
+	// fmt.Fprintf(w, "%+v\n", app.db[id].Short_url)
+	app.writeJSON(w, http.StatusOK, envelope{"shortlink": s}, nil)
+	if err != nil {
+		app.logger.Print(err)
+		http.Error(w, "The server encountered a problem and could not process your request.", http.StatusInternalServerError)
+	}
 }
 
 func (app *application) redirectHandler(w http.ResponseWriter, r *http.Request) {
@@ -123,19 +131,25 @@ func (app *application) redirectHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (app *application) listHandler(w http.ResponseWriter, r *http.Request) {
-	// TODO: add an envelope to the response
+	// DONE: add an envelope to the response
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	js, err := json.MarshalIndent(app.db, "", "\t")
+	err := app.writeJSON(w, http.StatusOK, envelope{"shortlinks": app.db}, nil)
 	if err != nil {
-		http.Error(w, "Failed to generate JSON response", http.StatusInternalServerError)
-		return
+		app.logger.Print(err)
+		http.Error(w, "The server encountered a problem and could not process your request.", http.StatusInternalServerError)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusFound)
-	w.Write(js)
+	// js, err := json.MarshalIndent(app.db, "", "\t")
+	// if err != nil {
+	// 	http.Error(w, "Failed to generate JSON response", http.StatusInternalServerError)
+	// 	return
+	// }
+
+	// w.Header().Set("Content-Type", "application/json")
+	// w.WriteHeader(http.StatusFound)
+	// w.Write(js)
 }
