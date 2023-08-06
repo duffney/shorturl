@@ -6,12 +6,6 @@ import (
 	"net/url"
 )
 
-/*
-DONE: Create `writeJson` and `readJson` helpers
-	DONE: Update `fmt.Fprintf` statements to use json helpers
-DONE: isUrlValid
-*/
-
 type envelope map[string]any
 
 func (app *application) writeJSON(w http.ResponseWriter, status int, data envelope, headers http.Header) error {
@@ -37,3 +31,20 @@ func (app *application) isURLValid(urlStr string) bool {
 	_, err := url.ParseRequestURI(urlStr)
 	return err == nil
 }
+
+// func openDB(cfg config) (*sql.DB, error) {
+// 	db, err := sql.Open("postgres", cfg.db.dsn)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+// 	defer cancel()
+
+// 	err = db.PingContext(ctx)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	return db, nil
+// }
