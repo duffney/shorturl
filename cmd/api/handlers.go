@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 )
 
 func (app *application) healthcheckHandler(w http.ResponseWriter, r *http.Request) {
@@ -39,7 +40,18 @@ func (app *application) NotFoundHandler(w http.ResponseWriter, r *http.Request) 
 	w.Write(jsonResponse)
 }
 
-func (app *application) shortenHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) shortenMuxHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		app.listUrlHandler(w, r)
+	case http.MethodPost:
+		app.shortenUrlHandler(w, r)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func (app *application) shortenUrlHandler(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -99,6 +111,7 @@ func (app *application) shortenHandler(w http.ResponseWriter, r *http.Request) {
 	s := Shorten{
 		Long_url:  input.Url,
 		Short_url: shortenerAddress + hash, // combine hash with shorturl address
+		CreatedAt: time.Now(),
 	}
 
 	// store Shorten in a map
@@ -114,23 +127,7 @@ func (app *application) shortenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (app *application) redirectHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// get the hash from the url
-	hash := r.URL.Path[len("/v1/"):]
-	// reverse hash to id
-	id := Base62ToDecimal(hash)
-	// get the url from the map
-	url := app.db[id].Long_url
-	// 301 redirect to the url
-	http.Redirect(w, r, url, http.StatusMovedPermanently)
-}
-
-func (app *application) listHandler(w http.ResponseWriter, r *http.Request) {
+func (app *application) listUrlHandler(w http.ResponseWriter, r *http.Request) {
 	// DONE: add an envelope to the response
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -152,4 +149,20 @@ func (app *application) listHandler(w http.ResponseWriter, r *http.Request) {
 	// w.Header().Set("Content-Type", "application/json")
 	// w.WriteHeader(http.StatusFound)
 	// w.Write(js)
+}
+
+func (app *application) redirectUrlHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// get the hash from the url
+	hash := r.URL.Path[len("/v1/"):]
+	// reverse hash to id
+	id := Base62ToDecimal(hash)
+	// get the url from the map
+	url := app.db[id].Long_url
+	// 301 redirect to the url
+	http.Redirect(w, r, url, http.StatusMovedPermanently)
 }
