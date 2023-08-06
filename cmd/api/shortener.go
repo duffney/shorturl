@@ -3,12 +3,13 @@ package main
 import (
 	"math"
 	"strings"
+	"time"
 )
 
 type Shorten struct {
-	// Id        int64
-	Long_url  string
-	Short_url string
+	Long_url  string    `json:"long_url"`
+	Short_url string    `json:"short_url"`
+	CreatedAt time.Time `json:"-"`
 }
 
 const base62Digits = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
