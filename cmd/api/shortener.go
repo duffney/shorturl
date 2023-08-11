@@ -13,7 +13,7 @@ type Shorten struct {
 }
 
 const base62Digits = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-const shortenerAddress = "http://localhost:4000/v1/"
+const shortenerAddress = "http://localhost:4000/v1/" // #TODO: Move to config
 
 func DecimalToBase62(n int64) string {
 	if n == 0 {
