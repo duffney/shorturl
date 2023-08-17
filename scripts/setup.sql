@@ -1,3 +1,6 @@
+-- psql -h localhost -U $POSTGRES_USER -f scripts/setup.sql 
+-- migrate -path=./migrations/ --database=$SHORTURL_DB_DSN up
+
 CREATE DATABASE shorturl;
 
 \c shorturl
@@ -15,5 +18,3 @@ GRANT ALL PRIVILEGES ON SCHEMA public TO shorturl;
 --     short_url TEXT NOT NULL
 -- );  createdAt TIMESTAMP NOT NULL DEFAULT NOW(),
 -- )
-
--- migrate -path migrations/ -database $SHORTURL_DB_DSN up

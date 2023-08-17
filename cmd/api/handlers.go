@@ -181,7 +181,9 @@ func (app *application) redirectUrlHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	// 301 redirect to the url
-	http.Redirect(w, r, url.Long_url, http.StatusMovedPermanently)
+	http.Redirect(w, r, url.Long_url, http.StatusFound)
+
+	app.models.Urls.IncrementVisits(url.Id)
 }
 
 func (app *application) listUrlHandler(w http.ResponseWriter, r *http.Request) {

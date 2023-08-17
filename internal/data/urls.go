@@ -11,6 +11,7 @@ type Url struct {
 	Id         int64     `json:"id"`
 	Long_url   string    `json:"long_url"`
 	Short_url  string    `json:"short_url"`
+	Visits     int       `json:"visits"`
 	Created_at time.Time `json:"-"`
 }
 
@@ -21,7 +22,7 @@ type UrlModel struct {
 
 func (u UrlModel) GetById(id int64) (*Url, error) {
 	query := `
-		SELECT id, long_url, short_url, created_at
+		SELECT id, long_url, short_url, visits, created_at
 		FROM urls
 		WHERE id = $1`
 
@@ -31,6 +32,7 @@ func (u UrlModel) GetById(id int64) (*Url, error) {
 		&url.Id,
 		&url.Long_url,
 		&url.Short_url,
+		&url.Visits,
 		&url.Created_at,
 	)
 
@@ -47,13 +49,19 @@ func (u UrlModel) GetById(id int64) (*Url, error) {
 
 func (u UrlModel) GetByLongUrl(longurl string) (*Url, error) {
 	query := `
-		SELECT id, long_url, short_url, created_at
+		SELECT id, long_url, short_url, visits, created_at
 		FROM urls
 		WHERE long_url = $1`
 
 	var url Url
 
-	err := u.DB.QueryRow(query, longurl).Scan(&url.Id, &url.Long_url, &url.Short_url, &url.Created_at)
+	err := u.DB.QueryRow(query, longurl).Scan(
+		&url.Id,
+		&url.Long_url,
+		&url.Short_url,
+		&url.Visits,
+		&url.Created_at,
+	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errors.New("no record found")
@@ -134,16 +142,16 @@ func (u UrlModel) Insert(url *Url) error {
 	query := `
 		INSERT INTO urls (id, long_url, short_url)	
 		VALUES ($1, $2, $3)
-		RETURNING created_at`
+		RETURNING visits, created_at`
 
 	args := []any{url.Id, url.Long_url, url.Short_url}
 
-	return u.DB.QueryRow(query, args...).Scan(&url.Created_at)
+	return u.DB.QueryRow(query, args...).Scan(&url.Visits, &url.Created_at)
 }
 
 func (u UrlModel) GetAll() ([]*Url, error) {
 	query := `
-		SELECT id, long_url, short_url, created_at
+		SELECT id, long_url, short_url, vists, created_at
 		FROM urls
 		ORDER BY created_at DESC`
 
@@ -166,6 +174,7 @@ func (u UrlModel) GetAll() ([]*Url, error) {
 			&url.Id,
 			&url.Long_url,
 			&url.Short_url,
+			&url.Visits,
 			&url.Created_at,
 		)
 
@@ -197,6 +206,15 @@ func (u UrlModel) LongUrlExists(url string) bool {
 	u.DB.QueryRow(query, url).Scan(&exists)
 
 	return exists
+}
+
+func (u UrlModel) IncrementVisits(int int64) {
+	query := `
+		UPDATE urls
+    	SET visits = visits + 1
+   		WHERE id = $1;`
+
+	u.DB.Exec(query, int)
 }
 
 /*
