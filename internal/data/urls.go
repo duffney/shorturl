@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -107,7 +108,7 @@ func (u UrlModel) Get(id interface{}) (*Url, error) {
 			FROM urls
 			WHERE id = $1`
 		args = []interface{}{id}
-	case string: // #TODO: Add logic for short_url & hash
+	case string: //
 		query = `
 			SELECT id, long_url, short_url, created_at
 			FROM urls
@@ -149,16 +150,43 @@ func (u UrlModel) Insert(url *Url) error {
 	return u.DB.QueryRow(query, args...).Scan(&url.Visits, &url.Created_at)
 }
 
-func (u UrlModel) GetAll() ([]*Url, error) {
-	query := `
-		SELECT id, long_url, short_url, vists, created_at
-		FROM urls
-		ORDER BY created_at DESC`
+func (u UrlModel) GetAll(long_url, short_url, sort, direction string, limit, offset int) ([]*Url, error) {
+	// query := `
+	// 	SELECT id, long_url, short_url, visits, created_at
+	// 	FROM urls
+	// 	ORDER BY created_at DESC`
+
+	// Exact match
+	// query := `
+	// 	SELECT id, long_url, short_url, visits, created_at
+	// 	FROM urls
+	// 	WHERE (LOWER(long_url) = LOWER($1) OR $1 = '')
+	// 	AND (LOWER(short_url) = LOWER($2) OR $2 = '')
+	// 	ORDER BY created_at DESC`
+
+	// partical match text search
+	// query := `
+	// SELECT id, long_url, short_url, visits, created_at
+	// FROM urls
+	// WHERE long_url ILIKE '%' || $1 || '%' OR $1 = ''
+	// AND short_url ILIKE '%' || $2 || '%' OR $2 = ''
+	// ORDER BY created_at DESC`
+
+	// sort
+	query := fmt.Sprintf(`
+	SELECT id, long_url, short_url, visits, created_at
+	FROM urls
+	WHERE long_url ILIKE '%%' || $1 || '%%' OR $1 = ''
+	AND short_url ILIKE '%%' || $2 || '%%' OR $2 = ''
+	ORDER BY %s %s, id ASC
+	LIMIT %d OFFSET %d`, sort, direction, limit, offset)
+
+	fmt.Println(query)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	rows, err := u.DB.QueryContext(ctx, query)
+	rows, err := u.DB.QueryContext(ctx, query, long_url, short_url)
 	if err != nil {
 		return nil, err
 	}
