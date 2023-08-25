@@ -150,7 +150,7 @@ func (u UrlModel) Insert(url *Url) error {
 	return u.DB.QueryRow(query, args...).Scan(&url.Visits, &url.Created_at)
 }
 
-func (u UrlModel) GetAll(long_url, short_url, sort, direction string, limit, offset int) ([]*Url, error) {
+func (u UrlModel) GetAll(long_url, short_url, sort, direction string, pager Pager) ([]*Url, Metadata, error) {
 	// query := `
 	// 	SELECT id, long_url, short_url, visits, created_at
 	// 	FROM urls
@@ -173,32 +173,41 @@ func (u UrlModel) GetAll(long_url, short_url, sort, direction string, limit, off
 	// ORDER BY created_at DESC`
 
 	// sort
+	// query := fmt.Sprintf(`
+	// SELECT id, long_url, short_url, visits, created_at
+	// FROM urls
+	// WHERE long_url ILIKE '%%' || $1 || '%%' OR $1 = ''
+	// AND short_url ILIKE '%%' || $2 || '%%' OR $2 = ''
+	// ORDER BY %s %s, id ASC
+	// LIMIT %d OFFSET %d`, sort, direction, limit, offset)
+
+	// pagination metadata
 	query := fmt.Sprintf(`
-	SELECT id, long_url, short_url, visits, created_at
+	SELECT count(*) OVER(), id, long_url, short_url, visits, created_at
 	FROM urls
 	WHERE long_url ILIKE '%%' || $1 || '%%' OR $1 = ''
 	AND short_url ILIKE '%%' || $2 || '%%' OR $2 = ''
 	ORDER BY %s %s, id ASC
-	LIMIT %d OFFSET %d`, sort, direction, limit, offset)
-
-	fmt.Println(query)
+	LIMIT %d OFFSET %d`, sort, direction, pager.limit(), pager.offset())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	rows, err := u.DB.QueryContext(ctx, query, long_url, short_url)
 	if err != nil {
-		return nil, err
+		return nil, Metadata{}, err
 	}
 
 	defer rows.Close()
 
-	var urls []*Url
+	totalRecords := 0
+	urls := []*Url{}
 
 	for rows.Next() {
 		var url Url
 
 		err = rows.Scan(
+			&totalRecords,
 			&url.Id,
 			&url.Long_url,
 			&url.Short_url,
@@ -207,7 +216,7 @@ func (u UrlModel) GetAll(long_url, short_url, sort, direction string, limit, off
 		)
 
 		if err != nil {
-			return nil, err
+			return nil, Metadata{}, err
 		}
 
 		urls = append(urls, &url)
@@ -215,10 +224,12 @@ func (u UrlModel) GetAll(long_url, short_url, sort, direction string, limit, off
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, Metadata{}, err
 	}
 
-	return urls, nil
+	metadata := calculateMetadata(totalRecords, pager.Page, pager.PageSize)
+
+	return urls, metadata, nil
 }
 
 func (u UrlModel) LongUrlExists(url string) bool {

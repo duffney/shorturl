@@ -158,10 +158,11 @@ func (app *application) listUrlHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var input struct {
-		Short_url    string
-		Long_url     string
-		Page         int // implement pagination
-		PageSize     int // implement pagination
+		Short_url string
+		Long_url  string
+		// Page         int // implement pagination
+		// PageSize     int // implement pagination
+		Pager        data.Pager
 		Sort         string
 		Direction    string
 		SortSafeList []string
@@ -172,15 +173,17 @@ func (app *application) listUrlHandler(w http.ResponseWriter, r *http.Request) {
 	// extract query string values and set defaults when empty
 	input.Short_url = app.readString(qs, "short_url", "")
 	input.Long_url = app.readString(qs, "long_url", "")
-	input.Page = app.readInt(qs, "page", 1)
-	input.PageSize = app.readInt(qs, "page_size", 20)
-	input.Sort = app.readString(qs, "sort", "id")
+
+	input.Pager.Page = app.readInt(qs, "page", 1)
+	input.Pager.PageSize = app.readInt(qs, "page_size", 20)
+
+	input.Sort = app.readString(qs, "sort", "id") //#TODO: move logic into data/sort
 	input.Direction = "ASC"
 	input.SortSafeList = []string{"id", "long_url", "short_url", "created_at", "visits", "-id", "-long_url", "-short_url", "-created_at", "-visits"}
 
 	safeSort := false
-	limit := input.PageSize
-	offset := (input.Page - 1) * input.PageSize
+	// limit := input.PageSize
+	// offset := (input.Page - 1) * input.PageSize
 
 	for _, safeValue := range input.SortSafeList {
 		if input.Sort == safeValue {
@@ -200,14 +203,14 @@ func (app *application) listUrlHandler(w http.ResponseWriter, r *http.Request) {
 		panic("unsafe sort parameter" + input.Sort)
 	}
 
-	urls, err := app.models.Urls.GetAll(input.Long_url, input.Short_url, input.Sort, input.Direction, limit, offset)
+	urls, metadata, err := app.models.Urls.GetAll(input.Long_url, input.Short_url, input.Sort, input.Direction, input.Pager)
 	if err != nil {
 		app.logger.Print(err)
 		http.Error(w, "The server encountered a problem and could not process your request.", http.StatusInternalServerError)
 		return
 	}
 
-	err = app.writeJSON(w, http.StatusOK, envelope{"shortlinks": urls}, nil)
+	err = app.writeJSON(w, http.StatusOK, envelope{"shortlinks": urls, "metadata": metadata}, nil)
 	if err != nil {
 		app.logger.Print(err)
 		http.Error(w, "The server encountered a problem and could not process your request.", http.StatusInternalServerError)
